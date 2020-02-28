@@ -20,38 +20,26 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const database = {
-    users : [
-        {
-            id : '123',
-            name : 'Admin',
-            email : 'user@example.com',
-            password : 'user123',
-            entries : 0,
-            joined : new Date()
-        },
-        {
-            id : '124',
-            name : 'user2',
-            email : 'user2@example.com',
-            password : 'user124',
-            entries : 0,
-            joined : new Date()
-        }
-    ]
-}
-
 app.get('/',(req, res) => {
     res.send(database.users);
 })
 
 app.post('/signin', (req, res) => {
     const {email, password} = req.body;
-    if(email === database.users[0].email && password === database.users[0].password){
-        res.json(database.users[0]);
-    } else{
-        res.status(400).json('error logging in');
-    }
+    db.select('email', 'hash').from('login')
+    .where('email', '=', email)
+    .then(data => {
+        const isValid = bcrypt.compareSync(password, data[0].hash);
+        if(isValid) {
+            return db.select('*').from('users')
+                    .where('email', '=', email)
+                    .then(user => res.json(user[0]))
+                    .catch(err => res.status(400).json('Unable to get user'))
+        } else{
+            res.status(400).json('Wrong credentials')
+        }
+    })
+    .catch(err => res.status(400).json('Wrong credentials'))
 })
 
 app.post('/register', (req, res) => {
@@ -96,11 +84,13 @@ app.get('/profile/:id', (req, res) => {
 
 app.put('/image', (req, res) => {
     const {id} = req.body;
+    console.log(id);
     db('users').where('id', '=', id)
       .increment('entries', 1)
       .returning('entries')
-      .then(entries => res.json(entries[0]))
-      .catch(res.status(400).json('Unable to get entries'));
+      .then(entries => {
+        res.json(entries[0]);
+      }).catch(err => res.status(400).json('Unable to get entries'));
 })
 
 app.listen(3000);
