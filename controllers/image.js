@@ -1,3 +1,5 @@
+const Clarifai = require('clarifai');
+
 const increaseEntries =(req, res, db) => {
     const {id} = req.body;
     db('users').where('id', '=', id)
